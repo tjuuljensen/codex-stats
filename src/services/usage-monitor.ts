@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'
-import { CodexAPIClient } from '../codex-client'
-import { AuthData, RateLimits } from '../types'
+import { CodexAppServerClient } from '../codex-client'
+import { AccountUsageSnapshot, RateLimits } from '../types'
 import {
   updateStatusBar,
   showUpdating,
@@ -8,90 +8,86 @@ import {
   showUpdateError,
 } from '../ui/status-bar'
 
-let apiClient: CodexAPIClient | undefined
-let currentAuthData: AuthData | undefined
+let appServerClient: CodexAppServerClient | undefined
+let outputChannel: vscode.OutputChannel | undefined
 
-/**
- * Initialize the usage monitor with authentication data
- */
-export function initializeMonitor(authData: AuthData) {
-  currentAuthData = authData
-  apiClient = new CodexAPIClient(authData)
+export function initializeMonitor(output: vscode.OutputChannel): void {
+  outputChannel = output
+  appServerClient = new CodexAppServerClient(output)
 }
 
-/**
- * Update usage statistics
- */
-export async function updateUsage() {
-  console.log('updateUsage called')
-  console.log('apiClient exists:', !!apiClient)
-  console.log('currentAuthData exists:', !!currentAuthData)
-
-  if (!apiClient || !currentAuthData) {
-    console.log('Missing apiClient or authData, returning')
+export async function updateUsage(): Promise<void> {
+  if (!appServerClient) {
     return
   }
 
   try {
-    console.log('Setting status bar to updating...')
     showUpdating()
 
-    // Send a simple message to get rate limits
-    console.log('Calling getRateLimits...')
-    const rateLimits = await apiClient.getRateLimits()
-    console.log('getRateLimits returned:', rateLimits)
-
-    if (rateLimits) {
-      updateStatusBar(rateLimits, currentAuthData)
-
-      // Check if we should show notifications
-      const config = vscode.workspace.getConfiguration('codexUsage')
-      const showNotifications = config.get<boolean>('showNotifications')
-
-      if (showNotifications) {
-        checkRateLimitWarnings(rateLimits)
-      }
-    } else {
-      console.log('No rate limits received')
-      showFetchError()
+    const snapshot = await appServerClient.readUsage()
+    if (snapshot.rateLimits.windows.length > 0) {
+      updateStatusBar(snapshot)
+      checkRateLimitWarnings(snapshot.rateLimits)
+      return
     }
+
+    log('account/rateLimits/read returned no recognizable limits')
+    showFetchError()
   } catch (error) {
-    console.error('Error updating usage:', error)
-    if (error instanceof Error) {
-      console.error('Error details:', error.message)
-    }
+    log(`Error updating usage: ${error instanceof Error ? error.message : String(error)}`)
     showUpdateError(error)
+
+    const config = vscode.workspace.getConfiguration('codexUsage')
+    if (config.get<boolean>('showNotifications')) {
+      vscode.window.showWarningMessage(
+        `Codex Stats: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
   }
 }
 
-/**
- * Check rate limits and show warnings if needed
- */
-function checkRateLimitWarnings(rateLimits: RateLimits) {
-  const warnings: string[] = []
-
-  if (rateLimits.primary && rateLimits.primary.used_percent > 90) {
-    warnings.push(
-      `5h limit is ${rateLimits.primary.used_percent.toFixed(1)}% used`,
-    )
+export async function reconnectAppServer(): Promise<void> {
+  if (!appServerClient) {
+    return
   }
 
-  if (rateLimits.secondary && rateLimits.secondary.used_percent > 90) {
-    warnings.push(
-      `Weekly limit is ${rateLimits.secondary.used_percent.toFixed(1)}% used`,
-    )
+  showUpdating()
+  await appServerClient.reconnect()
+  await updateUsage()
+}
+
+export function stopMonitor(): void {
+  appServerClient?.stop()
+  appServerClient = undefined
+}
+
+export function showLogs(): void {
+  outputChannel?.show()
+}
+
+export function getLastSnapshot(): AccountUsageSnapshot | null {
+  return appServerClient?.getLastSnapshot() || null
+}
+
+function checkRateLimitWarnings(rateLimits: RateLimits): void {
+  const config = vscode.workspace.getConfiguration('codexUsage')
+  const showNotifications = config.get<boolean>('showNotifications')
+  if (!showNotifications) {
+    return
   }
+
+  const warnings = rateLimits.windows
+    .filter((limit) => limit.used_percent >= 90)
+    .map((limit) => `${limit.label} is ${limit.used_percent.toFixed(1)}% used`)
 
   if (warnings.length > 0) {
-    vscode.window.showWarningMessage(
-      `Codex Stats Warning: ${warnings.join(', ')}`,
-    )
+    vscode.window.showWarningMessage(`Codex Stats Warning: ${warnings.join(', ')}`)
   }
 }
 
-/**
- * Get current auth data
- */
-export function getCurrentAuthData(): AuthData | undefined {
-  return currentAuthData
+function log(message: string): void {
+  const config = vscode.workspace.getConfiguration('codexUsage')
+  if (config.get<boolean>('debug')) {
+    outputChannel?.appendLine(`[${new Date().toISOString()}] ${message}`)
+  }
 }

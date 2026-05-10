@@ -1,32 +1,37 @@
 import * as vscode from 'vscode'
-import { updateUsage } from '../services/usage-monitor'
+import {
+  reconnectAppServer,
+  showLogs,
+  updateUsage,
+} from '../services/usage-monitor'
 
-/**
- * Register all extension commands
- */
-export function registerCommands(context: vscode.ExtensionContext) {
-  // No-op command just to show pointer cursor
-  const noopCommand = vscode.commands.registerCommand(
-    'codex-usage.noop',
-    () => {
-      // No-op command just to show pointer cursor
-    },
+export function registerCommands(context: vscode.ExtensionContext): void {
+  context.subscriptions.push(
+    vscode.commands.registerCommand('codex-usage.noop', () => undefined),
   )
 
-  // Refresh command
-  const refreshCommand = vscode.commands.registerCommand(
-    'codex-usage.refresh',
-    async () => {
+  context.subscriptions.push(
+    vscode.commands.registerCommand('codex-usage.refresh', async () => {
       await updateUsage()
-    },
+    }),
   )
 
-  // Login command
-  const loginCommand = vscode.commands.registerCommand(
-    'codex-usage.login',
-    async () => {
+  context.subscriptions.push(
+    vscode.commands.registerCommand('codex-usage.reconnect', async () => {
+      await reconnectAppServer()
+    }),
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('codex-usage.showLogs', () => {
+      showLogs()
+    }),
+  )
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('codex-usage.login', async () => {
       const selection = await vscode.window.showInformationMessage(
-        'You need to authenticate with Codex to use this extension.',
+        'Authenticate with Codex to use Codex Stats.',
         'Open Terminal',
         'Copy Command',
         'Help',
@@ -37,26 +42,17 @@ export function registerCommands(context: vscode.ExtensionContext) {
         setTimeout(() => {
           vscode.commands.executeCommand(
             'workbench.action.terminal.sendSequence',
-            {
-              text: 'codex login\n',
-            },
+            { text: 'codex login\n' },
           )
         }, 500)
       } else if (selection === 'Copy Command') {
         vscode.env.clipboard.writeText('codex login')
-        vscode.window.showInformationMessage(
-          'Command "codex login" copied to clipboard!',
-        )
+        vscode.window.showInformationMessage('Command "codex login" copied.')
       } else if (selection === 'Help') {
         vscode.env.openExternal(
-          vscode.Uri.parse('https://github.com/openai/codex-cli'),
+          vscode.Uri.parse('https://github.com/openai/codex'),
         )
       }
-    },
+    }),
   )
-
-  // Register all commands
-  context.subscriptions.push(noopCommand)
-  context.subscriptions.push(refreshCommand)
-  context.subscriptions.push(loginCommand)
 }

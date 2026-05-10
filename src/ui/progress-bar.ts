@@ -1,36 +1,39 @@
-/**
- * Create an emoji-based progress bar like cursor-stats
- */
-export function createProgressBar(percent: number): string {
-  // Emoji-based progress bar like cursor-stats
-  const PROGRESS_EMPTY = '⬜'
-  const PROGRESS_FILLED = '🟩'
-  const PROGRESS_WARNING = '🟨'
-  const PROGRESS_CRITICAL = '🟥'
+export type ProgressBarMode = 'remaining' | 'used'
 
-  const length = 10 // Number of emoji blocks
-  const warningThreshold = 75
-  const criticalThreshold = 90
-
-  // Ensure percentage is within 0-100 range
+export function createProgressBar(percent: number, mode: ProgressBarMode): string {
   const clampedPercentage = Math.max(0, Math.min(100, percent))
+  const width = 420
+  const height = 12
+  const fillWidth = Math.round((clampedPercentage / 100) * width)
+  const fillColor = getFillColor(clampedPercentage, mode)
+  const trackColor = '#e6e6ea'
 
-  // Calculate filled positions
-  const filledCount = Math.round((clampedPercentage / 100) * length)
-  const emptyCount = length - filledCount
+  const svg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    `<rect width="${width}" height="${height}" rx="6" fill="${trackColor}"/>`,
+    `<rect width="${fillWidth}" height="${height}" rx="6" fill="${fillColor}"/>`,
+    '</svg>',
+  ].join('')
 
-  // Choose emoji color based on thresholds
-  let filledEmoji = PROGRESS_FILLED
-  if (clampedPercentage >= criticalThreshold) {
-    filledEmoji = PROGRESS_CRITICAL
-  } else if (clampedPercentage >= warningThreshold) {
-    filledEmoji = PROGRESS_WARNING
+  return `![${clampedPercentage.toFixed(0)} percent ${mode}](data:image/svg+xml;utf8,${encodeURIComponent(svg)})`
+}
+
+function getFillColor(percent: number, mode: ProgressBarMode): string {
+  if (mode === 'used') {
+    if (percent >= 85) {
+      return '#f85149'
+    }
+    if (percent >= 70) {
+      return '#d29922'
+    }
+    return '#2ea043'
   }
 
-  // Build the progress bar
-  const bar =
-    filledEmoji.repeat(filledCount) + PROGRESS_EMPTY.repeat(emptyCount)
-
-  // Format with percentage aligned
-  return `${bar}  **${percent.toFixed(0)}%**`
+  if (percent <= 15) {
+    return '#f85149'
+  }
+  if (percent <= 30) {
+    return '#d29922'
+  }
+  return '#2ea043'
 }

@@ -1,96 +1,86 @@
-# Codex Stats Monitor
+# Codex Stats
 
-Monitor your ChatGPT/Codex Stats and rate limits directly in VS Code's status bar.
+Codex Stats adds a VS Code status bar item for monitoring ChatGPT/Codex usage limits from the local Codex CLI app server.
+
+The extension starts `codex app-server` locally and reads account and rate-limit data through its JSON-RPC interface. It does not require OpenAI API keys, scrape browser sessions, or make extension-owned network calls.
 
 ## Features
 
-- 📊 **Real-time Usage Display**: Shows your current rate limit usage percentage in the status bar
-- 👤 **Account Information**: Displays your email and plan type in the tooltip
-- ⏱️ **Auto-refresh**: Updates every 5 minutes (configurable)
-- ⚠️ **Usage Warnings**: Visual indicators when approaching rate limits
-- 🔄 **Manual Refresh**: Click the status bar item to refresh immediately
+- Status bar percentage for your primary Codex usage window.
+- Configurable display mode: percentage remaining or percentage used.
+- Tooltip with account email, plan, usage windows, reset times, and visual progress bars.
+- Divider-separated primary and weekly usage sections when both limits are available.
+- Manual refresh and reconnect commands.
+- Configurable auto-refresh interval.
+- Optional output-channel diagnostics for local troubleshooting.
 
-## How it Works
+## Requirements
 
-The extension reads your Codex authentication from `~/.codex/auth.json` (created when you run `codex login`) and periodically sends minimal requests to get your current rate limits from the response headers.
-
-## Visual Design
-
-The extension features a beautiful, modern interface inspired by GitHub Copilot:
-
-### Status Bar
-
-- **Color-coded indicators**: Green (safe), Yellow (warning), Red (critical)
-- **Dynamic background**: Changes color based on usage level
-- **Clean format**: Shows percentage with Codex branding
-
-### Enhanced Tooltip
-
-Hover over the status bar item to see a beautifully formatted panel with:
-
-#### Account Information
-
-- 📧 Email address with monospace formatting
-- 📦 Plan type in uppercase
-- Clean section separators
-
-#### Usage Visualization
-
-- **Visual progress bars** using colored emoji indicators:
-  - 🟢 Green circles for usage below 80%
-  - 🟡 Yellow circles for usage 80-95%
-  - 🔴 Red circles for usage above 95%
-- **Time-based limits**: 5-hour and 7-day windows
-- **Smart reset timers**: Shows time remaining in human-readable format
-- **Icon indicators**: Clock for hourly, calendar for weekly limits
-
-### Interactive Features
-
-- **One-click refresh**: Updates immediately when clicked
-- **Smart login flow**: Multiple options when authentication needed:
-  - Open terminal with command pre-filled
-  - Copy command to clipboard
-  - Access help documentation
-
-## Installation
-
-1. Clone this repository
-2. Open the `codex-usage` folder in VS Code
-3. Run `npm install`
-4. Run `npm run compile`
-5. Press `F5` to launch a new VS Code window with the extension
-
-## Building the Extension
-
-To create a `.vsix` file for installation:
+- VS Code 1.90.0 or newer.
+- Codex CLI installed and available on PATH, or configured with `codexUsage.codexPath`.
+- A ChatGPT Plus, Pro, Business, or compatible Codex account logged in with:
 
 ```bash
-npm install -g vsce
-cd codex-usage
-vsce package
+codex login
 ```
-
-Then install the generated `.vsix` file in VS Code.
 
 ## Configuration
 
-You can configure the extension in VS Code settings:
+- `codexUsage.updateInterval`: Refresh interval in seconds. Default: `300`.
+- `codexUsage.displayMode`: Show `remaining` or `used` percentages in the status bar and tooltip. Default: `remaining`.
+- `codexUsage.showNotifications`: Show warning notifications when usage is high. Default: `false`.
+- `codexUsage.codexPath`: Codex CLI executable path. Default: `codex`.
+- `codexUsage.appServerArgs`: Extra arguments passed to `codex app-server`. Default: `[]`.
+- `codexUsage.requestTimeoutMs`: JSON-RPC request timeout in milliseconds. Default: `10000`.
+- `codexUsage.debug`: Write diagnostic logs to the Codex Stats output channel. Default: `false`.
+- `codexUsage.logRawJsonRpc`: Log raw local JSON-RPC messages. Default: `false`.
 
-- `codexUsage.updateInterval`: Update interval in seconds (default: 300)
-- `codexUsage.showNotifications`: Show notifications when rate limits are high (default: false)
+Raw JSON-RPC logging is local-only and intended for troubleshooting. It may include account metadata in the VS Code output channel.
 
-## Prerequisites
+## Commands
 
-- You must be logged in to Codex (`codex login`)
-- The extension reads auth data from `~/.codex/auth.json`
+- `Codex Stats: Refresh Codex Stats`
+- `Codex Stats: Reconnect Codex App Server`
+- `Codex Stats: Show Codex Stats Logs`
+- `Codex Stats: Login to Codex`
+
+## Status Colors
+
+When display mode is `used`:
+
+- Green below 70%.
+- Yellow at 70% and above.
+- Red at 85% and above.
+
+When display mode is `remaining`:
+
+- Green above 30%.
+- Yellow at 30% and below.
+- Red at 15% and below.
 
 ## Troubleshooting
 
-If you see "Need to login":
+- If the status bar shows a warning, run `Codex Stats: Show Codex Stats Logs`.
+- Enable `codexUsage.debug` for app-server lifecycle logs.
+- Enable `codexUsage.logRawJsonRpc` only when diagnosing local app-server response changes.
+- If `codex` is not on PATH, set `codexUsage.codexPath` to the full executable path.
+- On Windows, the extension also checks `%APPDATA%\npm\codex.cmd` and the bundled ChatGPT VS Code extension Codex binary before falling back to PATH.
+- If authentication fails, run `codex login` in a terminal and refresh the extension.
+- If app-server exits, run `Codex Stats: Reconnect Codex App Server`.
 
-1. Run `codex login` in your terminal
-2. Reload the VS Code window (`Cmd+R` or `Ctrl+R`)
+## Privacy and Security
 
-## Privacy
+- No telemetry.
+- No external extension-owned network calls.
+- No upload of `auth.json` or token contents.
+- Account and rate-limit reads occur through the local Codex app-server process.
 
-This extension only reads your local authentication file and sends minimal requests to get rate limit information. No data is sent to third parties.
+## Development
+
+```bash
+npm ci
+npm run compile
+npm run vscode:package
+```
+
+Launch the extension development host from VS Code with `F5`.
