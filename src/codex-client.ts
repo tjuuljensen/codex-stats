@@ -307,7 +307,7 @@ function getCodexPathCandidates(): string[] {
     const candidates = [
       appData ? path.join(appData, 'npm', 'codex.cmd') : undefined,
       appData ? path.join(appData, 'npm', 'codex.exe') : undefined,
-      ...getBundledWindowsCodexCandidates(),
+      ...getBundledCodexCandidates(),
       'codex.cmd',
       'codex.exe',
       'codex',
@@ -317,6 +317,7 @@ function getCodexPathCandidates(): string[] {
   }
 
   return [
+    ...getBundledCodexCandidates(),
     path.join(os.homedir(), '.local', 'bin', 'codex'),
     '/opt/homebrew/bin/codex',
     '/usr/local/bin/codex',
@@ -334,9 +335,16 @@ function isSpawnStartupError(error: unknown): boolean {
   return maybeCode === 'ENOENT' || maybeCode === 'EINVAL'
 }
 
-function getBundledWindowsCodexCandidates(): string[] {
+function getBundledCodexCandidates(): string[] {
   const extensionRoot = path.join(os.homedir(), '.vscode', 'extensions')
   if (!fs.existsSync(extensionRoot)) {
+    return []
+  }
+
+  const platformDir = getBundledCodexPlatformDir()
+  const executableName = process.platform === 'win32' ? 'codex.exe' : 'codex'
+
+  if (!platformDir) {
     return []
   }
 
@@ -348,10 +356,24 @@ function getBundledWindowsCodexCandidates(): string[] {
         extensionRoot,
         entry,
         'bin',
-        'windows-x86_64',
-        'codex.exe',
+        platformDir,
+        executableName,
       ),
     )
+}
+
+function getBundledCodexPlatformDir(): string | undefined {
+  if (process.platform === 'win32') {
+    return 'windows-x86_64'
+  }
+  if (process.platform === 'linux') {
+    return process.arch === 'arm64' ? 'linux-aarch64' : 'linux-x86_64'
+  }
+  if (process.platform === 'darwin') {
+    return process.arch === 'arm64' ? 'macos-aarch64' : 'macos-x86_64'
+  }
+
+  return undefined
 }
 
 function formatJsonRpcError(method: string, error: JsonRpcError): Error {

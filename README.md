@@ -17,12 +17,14 @@ The extension starts `codex app-server` locally and reads account and rate-limit
 ## Requirements
 
 - VS Code 1.90.0 or newer.
-- Codex CLI installed and available on PATH, or configured with `codexUsage.codexPath`.
+- Codex CLI installed and available on PATH, configured with `codexUsage.codexPath`, or provided by the official ChatGPT VS Code extension.
 - A ChatGPT Plus, Pro, Business, or compatible Codex account logged in with:
 
 ```bash
 codex login
 ```
+
+If `codex login` is unavailable on Linux but you are already signed in through Codex or the ChatGPT VS Code extension, Codex Stats can use the existing `~/.codex/auth.json` session.
 
 ## Configuration
 
@@ -64,8 +66,9 @@ When display mode is `remaining`:
 - Enable `codexUsage.debug` for app-server lifecycle logs.
 - Enable `codexUsage.logRawJsonRpc` only when diagnosing local app-server response changes.
 - If `codex` is not on PATH, set `codexUsage.codexPath` to the full executable path.
-- On Windows, the extension also checks `%APPDATA%\npm\codex.cmd` and the bundled ChatGPT VS Code extension Codex binary before falling back to PATH.
-- If authentication fails, run `codex login` in a terminal and refresh the extension.
+- On Windows, the extension also checks `%APPDATA%\npm\codex.cmd`. On Windows, Linux, and macOS, it checks the bundled ChatGPT VS Code extension Codex binary before falling back to PATH.
+- If authentication fails and `~/.codex/auth.json` exists, run `Codex Stats: Reconnect Codex App Server`.
+- If authentication fails and `~/.codex/auth.json` is missing, run `codex login` in a terminal and refresh the extension.
 - If app-server exits, run `Codex Stats: Reconnect Codex App Server`.
 
 ## Privacy and Security

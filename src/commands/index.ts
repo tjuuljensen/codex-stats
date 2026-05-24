@@ -4,6 +4,7 @@ import {
   showLogs,
   updateUsage,
 } from '../services/usage-monitor'
+import { getCodexAuthPath, hasCodexAuthFile } from '../auth/auth-manager'
 
 export function registerCommands(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
@@ -30,6 +31,36 @@ export function registerCommands(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('codex-usage.login', async () => {
+      if (hasCodexAuthFile()) {
+        const selection = await vscode.window.showInformationMessage(
+          `Codex auth found at ${getCodexAuthPath()}.`,
+          'Reconnect',
+          'Open Terminal',
+          'Help',
+        )
+
+        if (selection === 'Reconnect') {
+          await reconnectAppServer()
+          return
+        }
+        if (selection === 'Open Terminal') {
+          vscode.commands.executeCommand('workbench.action.terminal.new')
+          setTimeout(() => {
+            vscode.commands.executeCommand(
+              'workbench.action.terminal.sendSequence',
+              { text: 'codex login status\n' },
+            )
+          }, 500)
+          return
+        }
+        if (selection === 'Help') {
+          vscode.env.openExternal(
+            vscode.Uri.parse('https://github.com/openai/codex'),
+          )
+        }
+        return
+      }
+
       const selection = await vscode.window.showInformationMessage(
         'Authenticate with Codex to use Codex Stats.',
         'Open Terminal',

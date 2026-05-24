@@ -52,6 +52,8 @@
    codex login
    ```
 
+   On Linux, if `codex login` is unavailable but you already use Codex through the ChatGPT VS Code extension, make sure `~/.codex/auth.json` exists. Codex Stats can use that existing session.
+
 2. **Reload VS Code window:**
 
    - Press `Cmd+R` (Mac) or `Ctrl+R` (Windows/Linux)
@@ -66,8 +68,8 @@
 
 **"Need to login" message:**
 
-- Run `codex login` in terminal
-- Make sure `~/.codex/auth.json` exists
+- If `~/.codex/auth.json` exists, run "Codex Stats: Reconnect Codex App Server"
+- If `~/.codex/auth.json` is missing, run `codex login` in terminal
 - Reload VS Code window
 
 **No status bar item visible:**
